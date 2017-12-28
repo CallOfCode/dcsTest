@@ -4,6 +4,7 @@ import com.baiyyy.didcs.abstracts.node.AbstractCleanNodeForBatch;
 import com.baiyyy.didcs.common.constant.EsConstant;
 import com.baiyyy.didcs.common.constant.FlowConstant;
 import com.baiyyy.didcs.common.constant.LogConstant;
+import com.baiyyy.didcs.common.es.EsClientFactory;
 import com.baiyyy.didcs.common.util.DateTimeUtil;
 import com.baiyyy.didcs.common.util.MapUtil;
 import com.baiyyy.didcs.common.util.SpringContextUtil;
@@ -12,9 +13,11 @@ import com.baiyyy.didcs.service.elsearch.EsCacheService;
 import com.baiyyy.didcs.service.elsearch.EsLogService;
 import com.baiyyy.didcs.service.flow.ArchiveService;
 import org.apache.commons.lang3.StringUtils;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +36,7 @@ public class CommonArchiveCleanNodeForBatch extends AbstractCleanNodeForBatch im
         archiveService = SpringContextUtil.getBean("archiveService");
         esLogService = SpringContextUtil.getBean("esLogService");
         esCacheService = SpringContextUtil.getBean("esCacheService");
+        RestHighLevelClient restClient = EsClientFactory.getDefaultRestClient();
         //1.获取total
         Map sqlMap = archiveService.getSql(getCleanFlow().getBatchId());
         //1.获取最大最小值及数据总量
@@ -81,10 +85,18 @@ public class CommonArchiveCleanNodeForBatch extends AbstractCleanNodeForBatch im
                 List stdIds = archiveService.getStdIdsBySourceIds(stdTable, getCleanFlow().getBatchId(), idStr);
                 if(stdIds.size()>0){
                     //进行数据刷新
-                    esCacheService.addEsCacheById(cacheName,StringUtils.join(stdIds,","));
+                    esCacheService.addEsCacheById(restClient,cacheName,StringUtils.join(stdIds,","));
                 }
             }catch(Exception e){
                 getLogger().error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_NODE),LogConstant.LGS_NODE_ERRORMSG_STO,e );
+            }finally {
+                if(null!=restClient){
+                    try {
+                        restClient.close();
+                    } catch (IOException e) {
+                        logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES),LogConstant.LGS_ES_ERRORMSG_RELEASERESTCLIENT,e);
+                    }
+                }
             }
         }
     }

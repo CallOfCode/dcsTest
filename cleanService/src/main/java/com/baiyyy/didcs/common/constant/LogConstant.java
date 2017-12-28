@@ -176,11 +176,15 @@ public class LogConstant {
     /**
      * 索引出错
      */
-    public static String LGS_ES_ERRORMSG_INDEX = "索引出错";
+    public static String LGS_ES_ERRORMSG_INDEX = "创建索引出错";
     /**
      * 更新出错
      */
     public static String LGS_ES_ERRORMSG_UPDATE = "更新出错";
+    /**
+     * 索引不存在
+     */
+    public static String LGS_ES_ERRORMSG_MISSING = "索引不存在";
     /**
      * 查询索引mapping出错
      */
@@ -222,6 +226,10 @@ public class LogConstant {
      * 缓存刷新开始
      */
     public static String LGS_ES_SUCCMSG_REFRESH_BEGIN = "缓存刷新开始";
+    /**
+     * 缓存创建完成
+     */
+    public static String LGS_ES_SUCCMSG_CREATE_FINISH = "缓存创建完成";
     /**
      * 缓存初始化完成
      */

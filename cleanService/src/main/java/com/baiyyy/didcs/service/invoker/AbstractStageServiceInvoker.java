@@ -15,8 +15,6 @@ import org.apache.curator.framework.recipes.shared.SharedCount;
 import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -64,10 +62,17 @@ public abstract class AbstractStageServiceInvoker implements IStageServiceInvoke
      */
     public abstract List<Map<String ,Object>> getHeadIds(int threads,Map<String,Object> param);
 
+    /**
+     * 服务调用前调用的方法
+     */
+    public void beforeInvoker(){}
+
     @Override
     public Boolean invokerService(String schemaId, String taskId, String batchId, String serviceJson, String userId) {
         Boolean result = null;
         parseService(schemaId, taskId, batchId, serviceJson, userId);
+
+        beforeInvoker();
 
         if (createCounter()) {
             if (execThreads()) {
@@ -110,8 +115,6 @@ public abstract class AbstractStageServiceInvoker implements IStageServiceInvoke
         }
         return r;
     }
-
-
 
     /**
      * 执行线程

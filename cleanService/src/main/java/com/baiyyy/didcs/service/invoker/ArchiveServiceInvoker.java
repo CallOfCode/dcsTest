@@ -1,11 +1,32 @@
 package com.baiyyy.didcs.service.invoker;
 
+import com.baiyyy.didcs.common.constant.EsConstant;
 import com.baiyyy.didcs.common.constant.LogConstant;
 import com.baiyyy.didcs.common.constant.SpringCloudConstant;
+import com.baiyyy.didcs.common.es.EsCacheSchemaJsonUtil;
+import com.baiyyy.didcs.common.es.EsClientFactory;
+import com.baiyyy.didcs.common.es.EsIndexUtil;
 import com.baiyyy.didcs.common.util.MapUtil;
+import com.baiyyy.didcs.common.util.ZookeeperUtil;
 import com.baiyyy.didcs.interfaces.invoker.IStageServiceInvoker;
 import com.baiyyy.didcs.service.dispatcher.LockService;
 import com.baiyyy.didcs.service.flow.ArchiveService;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
+import org.apache.curator.utils.CloseableUtils;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.support.WriteRequest;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +34,8 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
 import static net.logstash.logback.marker.Markers.append;
 
@@ -111,6 +130,63 @@ public class ArchiveServiceInvoker extends AbstractStageServiceInvoker implement
             return list.size();
         }else{
             return SpringCloudConstant.DEFAULT_THREADS_NUM;
+        }
+    }
+
+    @Override
+    public void beforeInvoker(){
+        //在调用服务前先校验并初始化es缓存
+        //index名称
+        String name = archiveService.selectCacheCodeByBatchId(getBatchId()).get("cache_code").toString();
+        String index = EsConstant.INDEX_PREFIX + name;
+        //锁路径
+        String lockPath = EsConstant.INDEX_INIT_LOCK_PREFIX + name;
+        CuratorFramework lockClient = null;
+        InterProcessMutex lock = null;
+        RestHighLevelClient restClient = null;
+        try{
+            lockClient = ZookeeperUtil.getClient();
+            //1.对name进行加锁
+            if(null==lockClient.checkExists().forPath(lockPath)){
+                lockClient.create().creatingParentsIfNeeded().forPath(lockPath);
+            }
+            lock = lockService.createLock(lockClient,lockPath);
+            if(null!=lock){
+                restClient = EsClientFactory.getDefaultRestClient();
+                //2.根据name检查是否存在相应的索引
+                if(!EsIndexUtil.existsIndex(restClient,index)){
+                    //如果没有则创建新索引
+                    EsIndexUtil.createIndex(restClient,index, EsCacheSchemaJsonUtil.getIndexBody(name));
+                    //创建version索引
+                    String versionIndex = EsConstant.INDEX_PREFIX + "versions";
+                    if(!EsIndexUtil.existsIndex(restClient,versionIndex)){
+                        //创建新索引
+                        EsIndexUtil.createIndex(restClient,versionIndex, "{}");
+                        restClient.update(new UpdateRequest(versionIndex,EsConstant.DEFAULT_TYPE,UUID.randomUUID().toString()).doc("versionNum", System.currentTimeMillis(),"type",name).upsert("versionNum", System.currentTimeMillis(),"type",name));
+                    }
+                    logger.info(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("index",name)),LogConstant.LGS_ES_SUCCMSG_CREATE_FINISH);
+                }
+            }else{
+                logger.info(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("index",name)),LogConstant.LGS_ES_SUCCMSG_INIT_BLOCK);
+            }
+        }catch(Exception e){
+            logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("cacheName",name)),LogConstant.LGS_ES_ERRORMSG_INDEX,e);
+        }finally {
+            if(null!=lock){
+                try {
+                    lock.release();
+                } catch (Exception e) {
+                    logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("cacheName",name)),LogConstant.LGS_ES_ERRORMSG_RELEASELOCK,e);
+                }
+            }
+            CloseableUtils.closeQuietly(lockClient);
+            if(null!=restClient){
+                try {
+                    restClient.close();
+                } catch (IOException e) {
+                    logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES),LogConstant.LGS_ES_ERRORMSG_RELEASERESTCLIENT,e);
+                }
+            }
         }
     }
 }

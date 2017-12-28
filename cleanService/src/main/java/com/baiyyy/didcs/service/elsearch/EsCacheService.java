@@ -398,18 +398,45 @@ public class EsCacheService {
      * 新增指定缓存的指定数据
      * 不会更新版本信息
      * @param name
+     * @param ids
      * @return
      */
     public JsonResult addEsCacheById(String name,String ids){
+        RestHighLevelClient restClient = EsClientFactory.getDefaultRestClient();
+        JsonResult r = addEsCacheById(restClient,name,ids);
+        if(null!=restClient){
+            try {
+                restClient.close();
+            } catch (IOException e) {
+                logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES),LogConstant.LGS_ES_ERRORMSG_RELEASERESTCLIENT,e);
+            }
+        }
+        return r;
+    }
+
+    /**
+     * 新增指定缓存的指定数据
+     * 不会更新版本信息
+     * @param restClient
+     * @param name
+     * @param ids
+     * @return
+     */
+    public JsonResult addEsCacheById(RestHighLevelClient restClient,String name,String ids){
         logger.info(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("index",name)),LogConstant.LGS_ES_SUCCMSG_REFRESH_BEGIN);
         JsonResult r = new JsonResult();
         r.setResult(true);
         //index名称
         String index = EsConstant.INDEX_PREFIX + name;
         CuratorFramework lockClient = null;
-        RestHighLevelClient restClient = null;
+
         try{
-            restClient = EsClientFactory.getDefaultRestClient();
+            if(!EsIndexUtil.existsIndex(restClient,index)){
+                r.setResult(false);
+                r.setMsg("索引不存在："+index);
+                logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("index",index)),LogConstant.LGS_ES_ERRORMSG_MISSING);
+                return r;
+            }
             //4.获取多值字段及分隔符
             List<Map> multiFields = esAliasMapper.getStdSchemaMultiAttrByCode(name);
             String multiFieldName = null;
@@ -483,13 +510,6 @@ public class EsCacheService {
             r.setMsg(name+"缓存更新失败");
         }finally {
             CloseableUtils.closeQuietly(lockClient);
-            if(null!=restClient){
-                try {
-                    restClient.close();
-                } catch (IOException e) {
-                    logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES),LogConstant.LGS_ES_ERRORMSG_RELEASERESTCLIENT,e);
-                }
-            }
         }
         return r;
     }
