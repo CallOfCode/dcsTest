@@ -1,0 +1,8 @@
+.schemas_search{ padding:10px 10px; }
+.schemas_search .layui-inline{ margin:5px 5px 5px 0; }
+.layui-table,.layui-table th{ text-align:center; }
+.schemas_list .layui-btn,.schemas_list .layui-btn+.layui-btn{ margin:2px 5px; }
+.schemas_list .layui-form-switch{ margin-top:0; }
+
+/*分页*/
+#page{ text-align:right; }
