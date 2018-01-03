@@ -5,13 +5,13 @@ var navs = [
         "href": "page/main.html",
         "spread": false
     },{
-        "title": "元数据管理",
+        "title": "元数据",
         "icon": "&#xe61c;",
         "href": "",
         "spread": false,
         "children": [
             {
-                "title": "元数据配置",
+                "title": "元数据管理",
                 "icon": "&#xe631;",
                 "href": "",
                 "spread": false
