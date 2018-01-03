@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%-5level] %d{HH:mm:ss.SSS} [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="stash_root" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <destination>172.17.24.99:4560</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
+        <keepAliveDuration>5 minutes</keepAliveDuration>
+    </appender>
+
+    <appender name="stash_biz" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <destination>172.17.24.99:4560</destination>
+        <encoder charset="UTF-8" class="net.logstash.logback.encoder.LogstashEncoder" />
+        <keepAliveDuration>5 minutes</keepAliveDuration>
+    </appender>
+
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+    <jmxConfigurator/>
+
+    <root level="INFO">
+        <appender-ref ref="stash_root" />
+        <appender-ref ref="console" />
+    </root>
+    <logger name="com.baiyyy" additivity="false" level="INFO">
+        <appender-ref ref="stash_biz" />
+        <appender-ref ref="console" />
+    </logger>
+</configuration>
