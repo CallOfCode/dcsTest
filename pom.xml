@@ -13,6 +13,7 @@
         <module>cleanService</module>
         <module>eurekaServer</module>
         <module>zuulServer</module>
+        <module>confService</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>
