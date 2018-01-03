@@ -44,7 +44,7 @@ public class TestController {
         try{
             ICleanFlow flow = new CommonCleanFlowForBatch();
             String lockPath = ZooCacheConstant.LOCK_PATH + "/1/" + new Random().nextInt(10);
-            flow.init("1","1","1","","538030","538021",null,200,lockPath);
+            flow.init("1","1","1","","538030","538001",null,200,lockPath);
             ICleanNode node = new CommonArchiveCleanNodeForBatch();
             List nodes = new ArrayList();
             nodes.add(node);

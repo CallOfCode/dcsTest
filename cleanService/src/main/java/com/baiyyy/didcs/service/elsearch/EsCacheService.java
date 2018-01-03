@@ -428,8 +428,6 @@ public class EsCacheService {
         r.setResult(true);
         //index名称
         String index = EsConstant.INDEX_PREFIX + name;
-        CuratorFramework lockClient = null;
-
         try{
             if(!EsIndexUtil.existsIndex(restClient,index)){
                 r.setResult(false);
@@ -508,9 +506,8 @@ public class EsCacheService {
             logger.error(append(LogConstant.LGS_FIELD_TAGS,LogConstant.LGS_TAGS_ES).and(append("cacheName",name)),LogConstant.LGS_ES_ERRORMSG_UPDATE,e);
             r.setResult(false);
             r.setMsg(name+"缓存更新失败");
-        }finally {
-            CloseableUtils.closeQuietly(lockClient);
         }
+
         return r;
     }
 
