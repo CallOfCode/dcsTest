@@ -13,7 +13,7 @@ var navs = [
             {
                 "title": "元数据管理",
                 "icon": "&#xe631;",
-                "href": "",
+                "href": "/schemas",
                 "spread": false
             },
             {
